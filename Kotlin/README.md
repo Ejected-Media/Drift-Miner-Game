@@ -245,3 +245,157 @@ What to check for when you run this:
 Once you confirm the physics feel "buttery" enough, the next step is the Miner part of "Drift Miner."
 Would you like to proceed to generating the Crystals (targets) and the Collision detection logic?
 
+___
+
+This is the satisfying part: turning the "Drift" into a game. We need to scatter crystals across the play area and give the player a reason to fly around.
+For Drift Miner, we will use Circle-Circle Collision. It is the most performant collision method for mobile games and fits the "organic" feel of the game perfectly.
+1. The Logic: Circle Collision
+To check if the ship hit a crystal, we calculate the distance between the center of the ship and the center of the crystal.
+ * If Distance < (Ship Radius + Crystal Radius): They are touching.
+ * Performance Tip: Calculating square roots (for distance) is slow. In game loops, we usually compare Distance Squared vs Radius Squared to keep the framerate smooth.
+2. The Crystal Data Class
+Add this simple class to your file. It holds the position and state of a single gem.
+
+```
+
+import android.graphics.Color
+import android.graphics.Paint
+import kotlin.random.Random
+
+data class Crystal(
+    var x: Float,
+    var y: Float,
+    val radius: Float = 25f // Slightly smaller than the ship
+) {
+    // Visuals for the crystal
+    val paint = Paint().apply {
+        color = Color.parseColor("#FF00FF") // Magenta/Purple style
+        style = Paint.Style.FILL
+        isAntiAlias = true
+        // Add a glow effect (shadow)
+        setShadowLayer(10f, 0f, 0f, Color.WHITE) 
+    }
+    
+    // Rect for collision optimization (optional, but good practice)
+    // For now, we stick to pure math
+}
+
+3. Updating GameView.kt
+We need to modify your existing GameView to manage a List of crystals.
+Here are the additions. I have marked where they fit into the previous code.
+// ... inside GameView class ...
+
+    // 1. NEW VARIABLES
+    private val crystals = mutableListOf<Crystal>()
+    private val scorePaint = Paint().apply {
+        color = Color.WHITE
+        textSize = 60f
+        isAntiAlias = true
+    }
+    private var score = 0
+
+    // 2. SPAWNING LOGIC (Call this inside onSizeChanged)
+    private fun spawnCrystals(width: Int, height: Int) {
+        crystals.clear()
+        // Spawn 10 crystals randomly
+        repeat(10) {
+            // Keep them away from the absolute edges (padding of 100)
+            val rX = Random.nextFloat() * (width - 200) + 100
+            val rY = Random.nextFloat() * (height - 200) + 100
+            crystals.add(Crystal(rX, rY))
+        }
+    }
+
+    // Update onSizeChanged to call the spawner
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val bounds = GameBounds(w.toFloat(), h.toFloat())
+        ship = ShipPhysics(w / 2f, h / 2f, bounds)
+        
+        // NEW: Create the level
+        spawnCrystals(w, h)
+    }
+
+    // 3. COLLISION LOGIC (Helper function)
+    private fun checkCollisions() {
+        val player = ship ?: return
+        val playerPos = player.getPosition()
+        
+        // Use an iterator to safely remove items while looping
+        val iterator = crystals.iterator()
+        while (iterator.hasNext()) {
+            val crystal = iterator.next()
+            
+            // A. Calculate Distance Squared
+            val dx = playerPos.x - crystal.x
+            val dy = playerPos.y - crystal.y
+            val distSq = dx * dx + dy * dy
+            
+            // B. Calculate Combined Radius Squared
+            val combinedRadius = 40f + crystal.radius // 40f is ship radius
+            val minDistSq = combinedRadius * combinedRadius
+            
+            // C. Check Intersection
+            if (distSq < minDistSq) {
+                // HIT!
+                iterator.remove() // Remove crystal from world
+                score += 100      // Increase score
+                
+                // Optional: Play sound here
+            }
+        }
+        
+        // D. Check for Level Complete
+        if (crystals.isEmpty()) {
+            // TODO: Open the Gateway logic
+        }
+    }
+
+    // 4. UPDATE ON_DRAW
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        canvas.drawColor(Color.BLACK)
+
+        // Update Physics
+        ship?.update(inputX, inputY)
+        
+        // NEW: Check Collisions
+        checkCollisions()
+
+        // NEW: Draw Crystals
+        for (crystal in crystals) {
+            canvas.drawCircle(crystal.x, crystal.y, crystal.radius, crystal.paint)
+        }
+
+        // Draw Ship (Existing code)
+        ship?.let { physics ->
+            val pos = physics.getPosition()
+            canvas.drawCircle(pos.x, pos.y, 40f, shipPaint)
+        }
+
+        // NEW: Draw Score
+        canvas.drawText("Score: $score", 50f, 100f, scorePaint)
+
+        // Draw Joystick (Existing code...)
+        if (isTouching) {
+             // ... existing joystick code ...
+        }
+
+        invalidate()
+    }
+
+```
+
+Why this feels good
+In Crystal Quest, part of the fun was the "vacuuming" effect. Because we check collisions every single frame (60 times a second), if your ship is drifting fast, you will slice through a group of crystals and pick them all up instantly.
+Swift/MacOS Note 🍎
+When we eventually port this to Swift:
+ * MutableList becomes a Swift Array.
+ * iterator.remove() logic is usually handled by crystals.removeAll { collisionCheck($0) } which is very clean in Swift.
+Next Step
+Now you have a ship that drifts and collects items. The game loop is functional!
+However, currently, the game is "safe." There is no threat.
+Would you like to:
+ * Add the "Gateway": Draw the exit at the bottom that opens when the list is empty?
+ * Add the "Nasties" (Enemies): Create a simple enemy AI that chases the player?
+ * 
