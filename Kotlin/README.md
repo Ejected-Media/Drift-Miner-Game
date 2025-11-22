@@ -93,3 +93,155 @@ class ShipPhysics(
 Next Step: Visualizing it
 To test if this feels right, we need to hook this up to a simple Android View (Canvas).
 Would you like me to generate the GameView class that extends View and runs the game loop to draw this ship?
+
+___
+
+Excellent. We will use a standard Android View subclass. For a high-performance game, we might eventually move to a SurfaceView, but for prototyping physics, a custom View is much cleaner and easier to debug.
+This GameView will handle three things:
+ * The Loop: It forces itself to redraw every frame.
+ * The Input: It calculates a "Virtual Joystick" vector when you touch the screen.
+ * The Rendering: It draws the ship based on the physics model.
+The GameView.kt Class
+This code assumes you have the ShipPhysics class from the previous step in the same file or package.
+
+```
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.view.MotionEvent
+import android.view.View
+import kotlin.math.sqrt
+
+class GameView(context: Context) : View(context) {
+
+    // 1. GRAPHICS SETUP
+    private val shipPaint = Paint().apply {
+        color = Color.CYAN
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+    
+    private val joystickPaint = Paint().apply {
+        color = Color.parseColor("#33FFFFFF") // Semi-transparent white
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+    }
+
+    // 2. GAME STATE
+    private var ship: ShipPhysics? = null
+    private val shipRadius = 40f
+
+    // Input Handling variables
+    private var inputX = 0f
+    private var inputY = 0f
+    private var touchStartX = 0f
+    private var touchStartY = 0f
+    private var isTouching = false
+
+    // 3. INITIALIZATION
+    // We wait for onSizeChanged so we know how big the screen is
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // Initialize ship in the center of the screen
+        val bounds = GameBounds(w.toFloat(), h.toFloat())
+        ship = ShipPhysics(w / 2f, h / 2f, bounds)
+    }
+
+    // 4. THE GAME LOOP (onDraw)
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        
+        // Set background color (Deep Space Black)
+        canvas.drawColor(Color.BLACK)
+
+        val physics = ship ?: return
+
+        // A. Update Physics
+        physics.update(inputX, inputY)
+
+        // B. Draw Ship
+        val pos = physics.getPosition()
+        canvas.drawCircle(pos.x, pos.y, shipRadius, shipPaint)
+
+        // C. Draw Debug Joystick (Optional visual aid)
+        if (isTouching) {
+            canvas.drawCircle(touchStartX, touchStartY, 150f, joystickPaint)
+            canvas.drawLine(touchStartX, touchStartY, 
+                            touchStartX + (inputX * 150f), 
+                            touchStartY + (inputY * 150f), 
+                            shipPaint)
+        }
+
+        // D. Trigger next frame (Loop)
+        invalidate() 
+    }
+
+    // 5. INPUT HANDLING (Virtual Joystick)
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                // Anchor the joystick where the finger first touches
+                touchStartX = event.x
+                touchStartY = event.y
+                isTouching = true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                // Calculate the distance from the anchor
+                val dx = event.x - touchStartX
+                val dy = event.y - touchStartY
+                
+                // Normalize logic (limit stick throw to 150 pixels)
+                val maxThrow = 150f
+                val distance = sqrt(dx * dx + dy * dy)
+                
+                // If within the circle, scale 0-1. If outside, cap at 1.
+                val scale = if (distance > maxThrow) maxThrow else distance
+                
+                // Convert to -1.0 to 1.0 range for the physics engine
+                if (distance > 0) {
+                    inputX = (dx / distance) * (scale / maxThrow)
+                    inputY = (dy / distance) * (scale / maxThrow)
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // Let go of the stick -> No acceleration (but drift continues!)
+                inputX = 0f
+                inputY = 0f
+                isTouching = false
+            }
+        }
+        return true
+    }
+}
+
+How the Input Works (The "Vector")
+To make the movement feel intuitive, we are using a Relative Virtual Joystick.
+ * Touch Down: Creates an anchor point (the center of the joystick).
+ * Drag: We calculate the vector (line) from the anchor to your current finger position.
+ * Normalization: We convert that distance into a value between -1.0 and 1.0.
+ * Release: The input drops to zero, but because of your ShipPhysics class, the ship won't stop instantly—it will drift.
+Hooking it up
+In your MainActivity.kt, you just need to set this view as the content:
+class MainActivity : ComponentActivity() { // or AppCompatActivity
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Hide the status bar for full immersion
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN 
+                                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION 
+                                            or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+                                            
+        setContentView(GameView(this))
+    }
+}
+
+```
+
+What to check for when you run this:
+ * The Drift: Does it feel like the ship has weight?
+ * The Bounds: Does it bounce off the walls correctly without getting stuck?
+Once you confirm the physics feel "buttery" enough, the next step is the Miner part of "Drift Miner."
+Would you like to proceed to generating the Crystals (targets) and the Collision detection logic?
+
