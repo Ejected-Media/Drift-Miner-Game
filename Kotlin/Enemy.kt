@@ -24,3 +24,16 @@ data class Enemy(
         }
     }
 }
+
+
+for (enemy in enemies) {
+    // Update enemy logic (move towards player)
+    ship?.getPosition()?.let { pos ->
+        enemy.update(pos.x, pos.y)
+    }
+    // Draw enemy
+    canvas.drawCircle(enemy.x, enemy.y, enemy.radius, enemy.paint)
+}
+
+
+
