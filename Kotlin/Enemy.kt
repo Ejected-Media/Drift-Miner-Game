@@ -36,4 +36,19 @@ for (enemy in enemies) {
 }
 
 
-
+    // ... inside checkCollisions ...
+    for (enemy in enemies) {
+        val dx = playerPos.x - enemy.x
+        val dy = playerPos.y - enemy.y
+        val distSq = dx*dx + dy*dy
+        val radii = 40f + enemy.radius
+        
+        if (distSq < radii * radii) {
+            // GAME OVER LOGIC
+            // For now, just reset the level or subtract score
+            score -= 500
+            startNextLevel() // Restart
+            return // Exit function to prevent errors
+        }
+    }
+    
