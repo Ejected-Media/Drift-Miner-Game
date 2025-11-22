@@ -36,3 +36,39 @@
     
     canvas.drawRect(gateLeft, gateTop, gateRight, gateBottom, gatePaint)
     
+
+
+    // ... inside checkCollisions method ...
+
+    // GATEWAY LOGIC
+    // Simple box collision check
+    val gateLeft = (width - gateWidth) / 2f
+    val gateTop = height - gateHeight
+    
+    // Check if ship is visually inside the gate area
+    // (We use ship Y + radius to check the bottom edge of the ship)
+    val shipBottom = playerPos.y + 40f // 40f is ship radius
+    val shipX = playerPos.x
+
+    // Is the ship horizontally aligned with the gate?
+    if (shipX > gateLeft && shipX < gateLeft + gateWidth) {
+        
+        // Is the ship vertically touching the gate?
+        if (shipBottom >= gateTop) {
+            if (isGateOpen) {
+                // --- WIN STATE: NEXT LEVEL ---
+                startNextLevel()
+            } else {
+                // --- CLOSED STATE: BOUNCE ---
+                // Force ship out of the wall so it doesn't get stuck
+                ship?.y = gateTop - 40f 
+                // Reverse Y velocity (Bounce) - Assuming we add a generic 'bounceY' method 
+                // or you can access velocityY directly if you make it public in ShipPhysics.
+                // For now, let's just push it back up manually:
+                // (Ideally, add a bounceVertical() method to ShipPhysics)
+            }
+        }
+    }
+
+
+    
