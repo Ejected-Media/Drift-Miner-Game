@@ -83,3 +83,18 @@
         spawnCrystals(width, height)
         }
         
+
+            private fun startNextLevel() {
+        currentLevel++
+        score += 1000 // Level completion bonus
+        
+        // Reset Ship to center
+        ship?.x = width / 2f
+        ship?.y = height / 2f
+        
+        // Respawn Crystals (maybe add more for higher levels?)
+        spawnCrystals(width, height)
+            }
+
+
+            
