@@ -37,6 +37,8 @@ We need two primary endpoints to start:
 4. The Go Project Structure
 Since you like to keep things organized, here is the folder structure for Ejected-Media/Drift-Miner-Backend:
 /drift-miner-backend
+
+
 ├── app.yaml                # App Engine Configuration
 ├── main.go                 # Entry point & Router
 ├── go.mod                  # Dependencies
